@@ -1,0 +1,54 @@
+{
+  "name": "partstracker-pro",
+  "version": "1.0.0",
+  "description": "Professional parts inventory tracking for field service companies",
+  "main": "public/index.html",
+  "scripts": {
+    "start": "firebase serve",
+    "build": "echo 'Static site - no build step required'",
+    "deploy": "firebase deploy",
+    "deploy:hosting": "firebase deploy --only hosting",
+    "deploy:functions": "firebase deploy --only functions",
+    "test": "firebase emulators:exec 'npm run test:unit'",
+    "test:unit": "echo 'Unit tests to be implemented'",
+    "dev": "firebase emulators:start",
+    "setup": "chmod +x setup.sh && ./setup.sh",
+    "functions:install": "cd functions && npm install",
+    "functions:serve": "firebase emulators:start --only functions",
+    "functions:logs": "firebase functions:log",
+    "lint": "echo 'Linting to be implemented'",
+    "format": "echo 'Formatting to be implemented'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/partstracker-pro.git"
+  },
+  "keywords": [
+    "parts-tracking",
+    "field-service",
+    "inventory",
+    "technician",
+    "firebase",
+    "mobile",
+    "pdf",
+    "automation"
+  ],
+  "author": "PartsTracker Pro Team",
+  "license": "PROPRIETARY",
+  "bugs": {
+    "url": "https://github.com/yourusername/partstracker-pro/issues"
+  },
+  "homepage": "https://github.com/yourusername/partstracker-pro#readme",
+  "devDependencies": {
+    "firebase-tools": "^12.4.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "not ie 11"
+  ]
+}

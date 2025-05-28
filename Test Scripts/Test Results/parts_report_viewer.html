@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parts Inventory Report Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .file-upload {
+            margin: 30px;
+            padding: 40px;
+            border: 3px dashed #3498db;
+            border-radius: 15px;
+            text-align: center;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            transition: all 0.3s ease;
+        }
+
+        .file-upload:hover {
+            border-color: #2980b9;
+            background: linear-gradient(135deg, #e9ecef, #dee2e6);
+        }
+
+        .file-upload.dragover {
+            border-color: #27ae60;
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            color: #3498db;
+            margin-bottom: 20px;
+        }
+
+        .upload-instructions {
+            color: #495057;
+            font-size: 1.2em;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            margin: 20px 0;
+        }
+
+        .file-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-input-button {
+            display: inline-block;
+            padding: 18px 40px;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1.1em;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .file-input-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(52, 152, 219, 0.4);
+        }
+
+        .report-section {
+            display: none;
+            padding: 30px;
+        }
+
+        .report-section.visible {
+            display: block;
+        }
+
+        .tech-header {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            border: 1px solid #dee2e6;
+        }
+
+        .tech-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .info-item {
+            text-align: center;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+
+        .info-label {
+            font-size: 0.9em;
+            color: #6c757d;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .info-value {
+            font-size: 1.2em;
+            color: #2c3e50;
+            font-weight: bold;
+        }
+
+        .summary-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+
+        .summary-title {
+            font-size: 1.4em;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .summary-card {
+            text-align: center;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid;
+            font-weight: 600;
+        }
+
+        .summary-card.used { background: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .summary-card.returned { background: #cce5ff; border-color: #b3d7ff; color: #004085; }
+        .summary-card.pending-return { background: #f0e6ff; border-color: #e1ccff; color: #6f42c1; }
+        .summary-card.pending-use { background: #fff3cd; border-color: #ffeaa7; color: #856404; }
+        .summary-card.never-received { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .summary-card.backordered { background: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
+        .summary-card.lost { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .summary-card.add-to-stock { background: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
+
+        .summary-number {
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+
+        .summary-label {
+            font-size: 0.9em;
+        }
+
+        .parts-by-status {
+            margin-top: 30px;
+        }
+
+        .status-group {
+            margin-bottom: 30px;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+
+        .status-header {
+            padding: 20px;
+            font-weight: 600;
+            font-size: 1.2em;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .status-header.used { background: linear-gradient(135deg, #27ae60, #229954); }
+        .status-header.returned { background: linear-gradient(135deg, #3498db, #2980b9); }
+        .status-header.pending-return { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
+        .status-header.pending-use { background: linear-gradient(135deg, #f39c12, #e67e22); }
+        .status-header.never-received { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .status-header.backordered { background: linear-gradient(135deg, #17a2b8, #138496); }
+        .status-header.lost { background: linear-gradient(135deg, #dc3545, #c82333); }
+        .status-header.add-to-stock { background: linear-gradient(135deg, #20c997, #17a2b8); }
+
+        .parts-list {
+            padding: 0;
+        }
+
+        .part-item {
+            padding: 20px;
+            border-bottom: 1px solid #f1f3f4;
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr auto;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .part-item:last-child {
+            border-bottom: none;
+        }
+
+        .part-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .part-invoice {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .part-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .part-number {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 3px;
+        }
+
+        .part-description {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+
+        .part-customer {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+
+        .part-notes {
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            color: #495057;
+            border-left: 3px solid #3498db;
+            margin-top: 5px;
+        }
+
+        .no-notes {
+            color: #adb5bd;
+            font-style: italic;
+        }
+
+        .action-buttons {
+            padding: 30px;
+            background: #f8f9fa;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(52, 152, 219, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60, #229954);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(39, 174, 96, 0.4);
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 30px;
+            border: 1px solid #f5c6cb;
+            display: none;
+            text-align: center;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 30px;
+            border: 1px solid #c3e6cb;
+            display: none;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .part-item {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            
+            .tech-info {
+                grid-template-columns: 1fr;
+            }
+            
+            .summary-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .print-styles {
+            display: none;
+        }
+
+        @media print {
+            body {
+                background: white !important;
+                padding: 0 !important;
+                font-size: 12px;
+            }
+            
+            .container {
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                max-width: none !important;
+            }
+            
+            .header {
+                background: #2c3e50 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                page-break-after: avoid;
+            }
+            
+            .file-upload, .action-buttons {
+                display: none !important;
+            }
+            
+            .tech-header, .summary-section, .status-group {
+                page-break-inside: avoid;
+                margin-bottom: 20px;
+            }
+            
+            .status-header {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .summary-card {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .part-item {
+                page-break-inside: avoid;
+                border-bottom: 1px solid #ddd !important;
+            }
+            
+            .print-friendly {
+                display: block;
+            }
+            
+            /* Ensure colors print */
+            .status-header.used { background: #27ae60 !important; }
+            .status-header.returned { background: #3498db !important; }
+            .status-header.pending-return { background: #9b59b6 !important; }
+            .status-header.pending-use { background: #f39c12 !important; }
+            .status-header.never-received { background: #e74c3c !important; }
+            .status-header.backordered { background: #17a2b8 !important; }
+            .status-header.lost { background: #dc3545 !important; }
+            .status-header.add-to-stock { background: #20c997 !important; }
+        }
+
+        .pdf-options {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .pdf-options.visible {
+            display: flex;
+        }
+
+        .pdf-modal {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        .pdf-modal h3 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+            text-align: center;
+        }
+
+        .pdf-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .btn-pdf {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-pdf-print {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-pdf-download {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-pdf-cancel {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-pdf:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Parts Inventory Report Viewer</h1>
+            <p>Upload technician's completed JSON file to view organized report</p>
+        </div>
+
+        <div class="file-upload" id="fileUpload">
+            <div class="upload-icon">📄</div>
+            <div class="upload-instructions">
+                <strong>Upload Completed Parts Inventory JSON File</strong><br>
+                Drop the JSON file here or click to browse
+            </div>
+            <div class="file-input-wrapper">
+                <input type="file" id="jsonInput" class="file-input" accept=".json" />
+                <div class="file-input-button">Choose JSON File</div>
+            </div>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+        <div class="success-message" id="successMessage"></div>
+
+        <div class="report-section" id="reportSection">
+            <div class="tech-header">
+                <div class="tech-info" id="techInfo">
+                    <!-- Tech info will be populated here -->
+                </div>
+            </div>
+
+            <div class="summary-section">
+                <h3 class="summary-title">📊 Status Summary</h3>
+                <div class="summary-grid" id="summaryGrid">
+                    <!-- Summary cards will be populated here -->
+                </div>
+            </div>
+
+            <div class="parts-by-status" id="partsByStatus">
+                <!-- Parts grouped by status will be populated here -->
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="showPrintOptions()">🖨️ Print/PDF Report</button>
+                <button class="btn btn-success" onclick="exportSummary()">📋 Export Summary</button>
+            </div>
+        </div>
+
+        <!-- PDF Options Modal -->
+        <div class="pdf-options" id="pdfOptions">
+            <div class="pdf-modal">
+                <h3>📄 Print/PDF Options</h3>
+                <p style="text-align: center; color: #6c757d; margin-bottom: 20px;">
+                    Choose how you'd like to generate your report:
+                </p>
+                <div class="pdf-buttons">
+                    <button class="btn-pdf btn-pdf-print" onclick="printToPDF()">
+                        🖨️ Print to PDF
+                    </button>
+                    <button class="btn-pdf btn-pdf-download" onclick="printReport()">
+                        📄 Quick Print
+                    </button>
+                    <button class="btn-pdf btn-pdf-cancel" onclick="closePrintOptions()">
+                        ❌ Cancel
+                    </button>
+                </div>
+                <div style="margin-top: 15px; font-size: 0.85em; color: #6c757d; text-align: center;">
+                    <strong>Print to PDF:</strong> Save as PDF file<br>
+                    <strong>Quick Print:</strong> Send to printer
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let reportData = null;
+
+        function initializeViewer() {
+            setupFileUpload();
+        }
+
+        function setupFileUpload() {
+            const fileUpload = document.getElementById('fileUpload');
+            const jsonInput = document.getElementById('jsonInput');
+
+            // Drag and drop functionality
+            fileUpload.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                fileUpload.classList.add('dragover');
+            });
+
+            fileUpload.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                fileUpload.classList.remove('dragover');
+            });
+
+            fileUpload.addEventListener('drop', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                fileUpload.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFileSelection(files[0]);
+                }
+            });
+
+            // File input change
+            jsonInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    handleFileSelection(file);
+                }
+            });
+        }
+
+        function handleFileSelection(file) {
+            if (!file.name.toLowerCase().endsWith('.json')) {
+                showError('Please select a JSON file (.json extension)');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const jsonData = JSON.parse(e.target.result);
+                    processReportData(jsonData);
+                } catch (error) {
+                    showError('Invalid JSON file. Please check the file format.');
+                    console.error('JSON parsing error:', error);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function processReportData(data) {
+            reportData = data;
+            
+            // Validate data structure
+            if (!data.technician || !data.parts || !Array.isArray(data.parts)) {
+                showError('Invalid parts inventory file format.');
+                return;
+            }
+
+            showSuccess(`Successfully loaded report for ${data.technician.name || 'Unknown Technician'}`);
+            renderReport();
+        }
+
+        function renderReport() {
+            renderTechInfo();
+            renderSummary();
+            renderPartsByStatus();
+            
+            document.getElementById('reportSection').classList.add('visible');
+        }
+
+        function renderTechInfo() {
+            const techInfo = document.getElementById('techInfo');
+            const tech = reportData.technician;
+            const completedDate = reportData.completedAt ? new Date(reportData.completedAt).toLocaleString() : 'Not specified';
+            
+            techInfo.innerHTML = `
+                <div class="info-item">
+                    <div class="info-label">Technician</div>
+                    <div class="info-value">${tech.name || 'Unknown'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Initials</div>
+                    <div class="info-value">${tech.initials || 'N/A'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Total Parts</div>
+                    <div class="info-value">${reportData.parts.length}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Completed</div>
+                    <div class="info-value">${completedDate}</div>
+                </div>
+            `;
+        }
+
+        function renderSummary() {
+            const summaryGrid = document.getElementById('summaryGrid');
+            const summary = reportData.summary || calculateSummary();
+            
+            summaryGrid.innerHTML = '';
+            
+            const statusConfig = {
+                'Used': { class: 'used', emoji: '✅' },
+                'Returned': { class: 'returned', emoji: '↩️' },
+                'Pending Return': { class: 'pending-return', emoji: '🔄' },
+                'Pending Use': { class: 'pending-use', emoji: '⏳' },
+                'Never Received': { class: 'never-received', emoji: '📭' },
+                'Backordered': { class: 'backordered', emoji: '📦' },
+                'Lost': { class: 'lost', emoji: '❌' },
+                'Add to Stock': { class: 'add-to-stock', emoji: '📈' }
+            };
+
+            Object.entries(summary).forEach(([status, count]) => {
+                if (count > 0) {
+                    const config = statusConfig[status] || { class: 'other', emoji: '•' };
+                    const card = document.createElement('div');
+                    card.className = `summary-card ${config.class}`;
+                    card.innerHTML = `
+                        <div class="summary-number">${count}</div>
+                        <div class="summary-label">${config.emoji} ${status}</div>
+                    `;
+                    summaryGrid.appendChild(card);
+                }
+            });
+        }
+
+        function renderPartsByStatus() {
+            const container = document.getElementById('partsByStatus');
+            container.innerHTML = '';
+            
+            // Group parts by status
+            const partsByStatus = {};
+            reportData.parts.forEach(part => {
+                const status = getStatusLabel(part.status);
+                if (!partsByStatus[status]) {
+                    partsByStatus[status] = [];
+                }
+                partsByStatus[status].push(part);
+            });
+
+            // Render each status group
+            Object.entries(partsByStatus).forEach(([status, parts]) => {
+                const statusGroup = document.createElement('div');
+                statusGroup.className = 'status-group';
+                
+                const statusClass = status.toLowerCase().replace(/\s+/g, '-');
+                const emoji = getStatusEmoji(status);
+                
+                statusGroup.innerHTML = `
+                    <div class="status-header ${statusClass}">
+                        <span>${emoji} ${status}</span>
+                        <span>${parts.length} item${parts.length !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div class="parts-list">
+                        ${parts.map(part => `
+                            <div class="part-item">
+                                <div class="part-invoice">Invoice: ${part.invoiceNumber || 'N/A'}</div>
+                                <div class="part-details">
+                                    <div class="part-number">${part.partNumber}</div>
+                                    <div class="part-description">${part.description}</div>
+                                    <div class="part-customer">Customer: ${part.customer}</div>
+                                </div>
+                                <div class="part-customer">Qty: ${part.qty}</div>
+                                <div>
+                                    ${part.notes ? `<div class="part-notes">${part.notes}</div>` : '<div class="part-notes no-notes">No notes</div>'}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                
+                container.appendChild(statusGroup);
+            });
+        }
+
+        function getStatusLabel(status) {
+            const statusMap = {
+                'pending-use': 'Pending Use',
+                'used': 'Used',
+                'returned': 'Returned',
+                'pending-return': 'Pending Return',
+                'never-received': 'Never Received',
+                'backordered': 'Backordered',
+                'lost': 'Lost',
+                'add-to-stock': 'Add to Stock'
+            };
+            return statusMap[status] || status;
+        }
+
+        function getStatusEmoji(status) {
+            const emojiMap = {
+                'Used': '✅',
+                'Returned': '↩️',
+                'Pending Return': '🔄',
+                'Pending Use': '⏳',
+                'Never Received': '📭',
+                'Backordered': '📦',
+                'Lost': '❌',
+                'Add to Stock': '📈'
+            };
+            return emojiMap[status] || '•';
+        }
+
+        function calculateSummary() {
+            const summary = {};
+            reportData.parts.forEach(part => {
+                const status = getStatusLabel(part.status);
+                summary[status] = (summary[status] || 0) + 1;
+            });
+            return summary;
+        }
+
+        function showPrintOptions() {
+            document.getElementById('pdfOptions').classList.add('visible');
+        }
+
+        function closePrintOptions() {
+            document.getElementById('pdfOptions').classList.remove('visible');
+        }
+
+        function printToPDF() {
+            closePrintOptions();
+            
+            // Show instructions for PDF generation
+            showSuccess('🔄 Preparing PDF-optimized print view...');
+            
+            // Small delay to show the message
+            setTimeout(() => {
+                // Create a temporary print-optimized version in the same window
+                createPrintView();
+            }, 1000);
+        }
+
+        function createPrintView() {
+            // Store original content
+            const originalContent = document.body.innerHTML;
+            const originalTitle = document.title;
+            
+            // Generate print content
+            const printContent = generatePrintContentHTML();
+            
+            // Replace page content temporarily
+            document.body.innerHTML = printContent;
+            document.title = `Parts Report - ${reportData.technician.name || 'Unknown'}`;
+            
+            // Add print-specific styles
+            const printStyles = document.createElement('style');
+            printStyles.innerHTML = `
+                @media print {
+                    body { 
+                        margin: 0 !important; 
+                        padding: 0 !important;
+                        font-size: 12px !important;
+                    }
+                    .no-print { display: none !important; }
+                    .print-only { display: block !important; }
+                    .status-section { page-break-inside: avoid; }
+                    .parts-table { page-break-inside: avoid; }
+                    .status-header { 
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+                    .summary-card {
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+                }
+                .restore-button {
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    z-index: 1000;
+                    padding: 10px 20px;
+                    background: #dc3545;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    font-weight: bold;
+                }
+                .print-instructions {
+                    background: #d4edda;
+                    border: 1px solid #c3e6cb;
+                    color: #155724;
+                    padding: 15px;
+                    margin: 20px;
+                    border-radius: 8px;
+                    text-align: center;
+                }
+            `;
+            document.head.appendChild(printStyles);
+            
+            // Add restore functionality
+            window.restoreOriginalView = function() {
+                document.body.innerHTML = originalContent;
+                document.title = originalTitle;
+                // Reinitialize the viewer
+                initializeViewer();
+                // Re-process the current report data if it exists
+                if (reportData) {
+                    renderReport();
+                }
+            };
+            
+            // Auto-trigger print dialog after a short delay
+            setTimeout(() => {
+                window.print();
+            }, 500);
+        }
+
+        function generatePrintContentHTML() {
+            const tech = reportData.technician;
+            const completedDate = reportData.completedAt ? new Date(reportData.completedAt).toLocaleString() : 'Not specified';
+            const summary = reportData.summary || calculateSummary();
+            
+            // Group parts by status for organized printing
+            const partsByStatus = {};
+            reportData.parts.forEach(part => {
+                const status = getStatusLabel(part.status);
+                if (!partsByStatus[status]) {
+                    partsByStatus[status] = [];
+                }
+                partsByStatus[status].push(part);
+            });
+
+            let contentHTML = `
+                <button class="restore-button no-print" onclick="restoreOriginalView()">← Back to Report</button>
+                
+                <div class="print-instructions no-print">
+                    <strong>📄 Ready to Print/Save as PDF!</strong><br>
+                    Press Ctrl+P (or Cmd+P on Mac) and choose "Save as PDF" in the print dialog.<br>
+                    <button onclick="window.print()" style="margin-top: 10px; padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">🖨️ Open Print Dialog</button>
+                </div>
+
+                <div style="font-family: Arial, sans-serif; margin: 20px; color: #333; line-height: 1.4;">
+                    <div style="background: #2c3e50; color: white; padding: 20px; margin: -20px -20px 30px -20px; text-align: center;">
+                        <h1 style="margin: 0; font-size: 24px;">📋 Parts Inventory Report</h1>
+                        <p style="margin: 5px 0 0 0; opacity: 0.9;">Professional Summary for Office Review</p>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; background: #f8f9fa; padding: 20px; border-radius: 8px;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 12px; color: #666; font-weight: bold; margin-bottom: 5px;">TECHNICIAN</div>
+                            <div style="font-size: 16px; font-weight: bold; color: #2c3e50;">${tech.name || 'Unknown'}</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 12px; color: #666; font-weight: bold; margin-bottom: 5px;">INITIALS</div>
+                            <div style="font-size: 16px; font-weight: bold; color: #2c3e50;">${tech.initials || 'N/A'}</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 12px; color: #666; font-weight: bold; margin-bottom: 5px;">TOTAL PARTS</div>
+                            <div style="font-size: 16px; font-weight: bold; color: #2c3e50;">${reportData.parts.length}</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 12px; color: #666; font-weight: bold; margin-bottom: 5px;">COMPLETED</div>
+                            <div style="font-size: 16px; font-weight: bold; color: #2c3e50;">${new Date(completedDate).toLocaleDateString()}</div>
+                        </div>
+                    </div>
+
+                    <h3 style="margin-bottom: 15px;">📊 Status Summary</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 30px;">`;
+
+            // Add summary cards
+            const statusStyles = {
+                'Used': 'background: #d4edda; border: 2px solid #c3e6cb; color: #155724;',
+                'Returned': 'background: #cce5ff; border: 2px solid #b3d7ff; color: #004085;',
+                'Pending Return': 'background: #f0e6ff; border: 2px solid #e1ccff; color: #6f42c1;',
+                'Pending Use': 'background: #fff3cd; border: 2px solid #ffeaa7; color: #856404;',
+                'Never Received': 'background: #f8d7da; border: 2px solid #f5c6cb; color: #721c24;',
+                'Backordered': 'background: #d1ecf1; border: 2px solid #bee5eb; color: #0c5460;',
+                'Lost': 'background: #f8d7da; border: 2px solid #f5c6cb; color: #721c24;',
+                'Add to Stock': 'background: #d1ecf1; border: 2px solid #bee5eb; color: #0c5460;'
+            };
+
+            Object.entries(summary).forEach(([status, count]) => {
+                if (count > 0) {
+                    const emoji = getStatusEmoji(status);
+                    const style = statusStyles[status] || 'background: #f8f9fa; border: 2px solid #dee2e6; color: #495057;';
+                    contentHTML += `
+                        <div style="text-align: center; padding: 15px; border-radius: 8px; font-weight: bold; ${style}">
+                            <div style="font-size: 18px;">${count}</div>
+                            <div style="font-size: 12px;">${emoji} ${status}</div>
+                        </div>`;
+                }
+            });
+
+            contentHTML += `</div><h3 style="margin-bottom: 20px;">📋 Detailed Parts List</h3>`;
+
+            // Debug: Let's make sure we have parts data
+            console.log('Parts data for printing:', partsByStatus);
+            console.log('Total status groups:', Object.keys(partsByStatus).length);
+
+            // Add parts by status - Enhanced version
+            Object.entries(partsByStatus).forEach(([status, parts]) => {
+                const emoji = getStatusEmoji(status);
+                const headerStyle = headerStyles[status] || 'background: #34495e;';
+                
+                console.log(`Processing status: ${status}, parts count: ${parts.length}`);
+                
+                contentHTML += `
+                    <div style="margin-bottom: 25px; page-break-inside: avoid; border: 1px solid #ddd;">
+                        <div style="${headerStyle} color: white; padding: 12px 15px; margin-bottom: 0; font-weight: bold; font-size: 16px;">
+                            ${emoji} ${status} (${parts.length} item${parts.length !== 1 ? 's' : ''})
+                        </div>
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 0;">
+                            <thead>
+                                <tr style="background: #f8f9fa;">
+                                    <th style="padding: 12px 8px; text-align: left; font-weight: bold; border: 1px solid #ddd; font-size: 11px; background: #f8f9fa;">Invoice #</th>
+                                    <th style="padding: 12px 8px; text-align: left; font-weight: bold; border: 1px solid #ddd; font-size: 11px; background: #f8f9fa;">Part Number</th>
+                                    <th style="padding: 12px 8px; text-align: left; font-weight: bold; border: 1px solid #ddd; font-size: 11px; background: #f8f9fa;">Description</th>
+                                    <th style="padding: 12px 8px; text-align: left; font-weight: bold; border: 1px solid #ddd; font-size: 11px; background: #f8f9fa;">Customer</th>
+                                    <th style="padding: 12px 8px; text-align: left; font-weight: bold; border: 1px solid #ddd; font-size: 11px; background: #f8f9fa;">Qty</th>
+                                    <th style="padding: 12px 8px; text-align: left; font-weight: bold; border: 1px solid #ddd; font-size: 11px; background: #f8f9fa;">Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+
+                parts.forEach((part, index) => {
+                    const rowStyle = index % 2 === 0 ? 'background: #f9f9f9;' : 'background: white;';
+                    const notes = part.notes && part.notes.trim() !== '' ? part.notes : 'No notes';
+                    const notesStyle = part.notes && part.notes.trim() !== '' ? 'color: #333;' : 'color: #999; font-style: italic;';
+                    
+                    contentHTML += `
+                        <tr style="${rowStyle}">
+                            <td style="padding: 10px 8px; border: 1px solid #ddd; font-size: 11px; vertical-align: top; font-weight: bold; color: #2c3e50;">${part.invoiceNumber || 'N/A'}</td>
+                            <td style="padding: 10px 8px; border: 1px solid #ddd; font-size: 11px; vertical-align: top; font-weight: bold; color: #495057;">${part.partNumber || 'N/A'}</td>
+                            <td style="padding: 10px 8px; border: 1px solid #ddd; font-size: 11px; vertical-align: top;">${part.description || 'No description'}</td>
+                            <td style="padding: 10px 8px; border: 1px solid #ddd; font-size: 11px; vertical-align: top;">${part.customer || 'Unknown'}</td>
+                            <td style="padding: 10px 8px; border: 1px solid #ddd; font-size: 11px; vertical-align: top; text-align: center;">${part.qty || 1}</td>
+                            <td style="padding: 10px 8px; border: 1px solid #ddd; font-size: 10px; vertical-align: top; max-width: 150px; word-wrap: break-word; ${notesStyle}">${notes}</td>
+                        </tr>`;
+                });
+
+                contentHTML += `
+                            </tbody>
+                        </table>
+                    </div>`;
+            });
+
+            // Add a fallback if no parts were found
+            if (Object.keys(partsByStatus).length === 0) {
+                contentHTML += `
+                    <div style="background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
+                        <strong>⚠️ No parts data found</strong><br>
+                        This may indicate an issue with the data processing.
+                    </div>`;
+            }
+
+            contentHTML += `
+                    <div style="margin-top: 30px; text-align: center; font-size: 10px; color: #666; border-top: 1px solid #ddd; padding-top: 10px;">
+                        Generated on ${new Date().toLocaleString()} | Parts Inventory Management System
+                    </div>
+                </div>`;
+
+            return contentHTML;
+        }
+
+        function printReport() {
+            closePrintOptions();
+            
+            // Simple print using browser's print functionality
+            window.print();
+        }
+
+        function exportSummary() {
+            const summary = {
+                technician: reportData.technician,
+                completedAt: reportData.completedAt,
+                totalParts: reportData.parts.length,
+                statusSummary: reportData.summary || calculateSummary(),
+                importantItems: reportData.parts.filter(part => 
+                    part.status === 'lost' || part.notes.trim() !== '' || part.status === 'never-received'
+                )
+            };
+
+            const dataStr = JSON.stringify(summary, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            const techInitials = reportData.technician.initials || 'tech';
+            const date = new Date().toISOString().slice(0, 10);
+            link.download = `parts-summary-${techInitials}-${date}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            URL.revokeObjectURL(url);
+            showSuccess('Summary exported successfully!');
+        }
+
+        function showError(message) {
+            const errorElement = document.getElementById('errorMessage');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+            setTimeout(() => {
+                errorElement.style.display = 'none';
+            }, 5000);
+        }
+
+        function showSuccess(message) {
+            const successElement = document.getElementById('successMessage');
+            successElement.textContent = message;
+            successElement.style.display = 'block';
+            setTimeout(() => {
+                successElement.style.display = 'none';
+            }, 3000);
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeViewer();
+        });
+    </script>
+</body>
+</html>

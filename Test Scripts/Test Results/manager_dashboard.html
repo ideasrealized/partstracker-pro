@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parts Manager Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .section {
+            padding: 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+        }
+
+        .upload-area {
+            border: 3px dashed #3498db;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #27ae60;
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            margin: 15px 0;
+        }
+
+        .file-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-input-button {
+            display: inline-block;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-input-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(52, 152, 219, 0.3);
+        }
+
+        .processed-files {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .processed-files.visible {
+            display: block;
+        }
+
+        .file-card {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .file-info {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .file-details {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+
+        .tech-input {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .tech-input input {
+            padding: 8px 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 0.9em;
+        }
+
+        .tech-input input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .link-section {
+            margin-left: 20px;
+            text-align: center;
+        }
+
+        .generated-link {
+            background: #e8f4fd;
+            border: 1px solid #bee5eb;
+            border-radius: 6px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 0.8em;
+            word-break: break-all;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60, #229954);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .email-template {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 0.9em;
+            white-space: pre-line;
+        }
+
+        .success-message, .error-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: none;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .manager-email {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .manager-email:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        @media (max-width: 768px) {
+            .file-card {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .link-section {
+                margin-left: 0;
+                margin-top: 15px;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Parts Manager Dashboard</h1>
+            <p>Upload PartsPick PDFs and generate technician links</p>
+        </div>
+
+        <div class="section">
+            <h2>👤 Manager Settings</h2>
+            <input type="email" class="manager-email" id="managerEmail" placeholder="Your email (where completed reports will be sent)" />
+        </div>
+
+        <div class="section">
+            <h2>📄 Upload PartsPick PDFs</h2>
+            <div class="upload-area" id="uploadArea">
+                <div style="font-size: 3em; margin-bottom: 15px;">📄</div>
+                <div style="font-size: 1.2em; margin-bottom: 15px;">
+                    <strong>Drop PartsPick PDF files here or click to browse</strong><br>
+                    You can upload multiple files at once
+                </div>
+                <div class="file-input-wrapper">
+                    <input type="file" id="pdfInput" class="file-input" accept=".pdf" multiple />
+                    <div class="file-input-button">Choose PDF Files</div>
+                </div>
+            </div>
+
+            <div class="success-message" id="successMessage"></div>
+            <div class="error-message" id="errorMessage"></div>
+
+            <div class="processed-files" id="processedFiles">
+                <h3>📋 Processed Files & Links</h3>
+                <div id="filesList"></div>
+                
+                <div style="text-align: center; margin-top: 30px;">
+                    <button class="btn btn-success" onclick="generateAllEmails()">📧 Generate All Email Templates</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="section" id="emailSection" style="display: none;">
+            <h2>📧 Email Templates</h2>
+            <p style="margin-bottom: 20px; color: #6c757d;">Copy these email templates and send to your technicians:</p>
+            <div id="emailTemplates"></div>
+        </div>
+    </div>
+
+    <script>
+        // Set up PDF.js worker
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+
+        let processedFiles = [];
+        let baseURL = window.location.origin + window.location.pathname.replace('manager.html', '');
+
+        function initializeDashboard() {
+            setupFileUpload();
+            
+            // Load saved manager email
+            const savedEmail = localStorage.getItem('managerEmail');
+            if (savedEmail) {
+                document.getElementById('managerEmail').value = savedEmail;
+            }
+        }
+
+        function setupFileUpload() {
+            const uploadArea = document.getElementById('uploadArea');
+            const pdfInput = document.getElementById('pdfInput');
+
+            // Drag and drop
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                uploadArea.classList.remove('dragover');
+                
+                const files = Array.from(e.dataTransfer.files).filter(file => file.type === 'application/pdf');
+                if (files.length > 0) {
+                    processMultipleFiles(files);
+                }
+            });
+
+            // File input
+            pdfInput.addEventListener('change', function(e) {
+                const files = Array.from(e.target.files);
+                if (files.length > 0) {
+                    processMultipleFiles(files);
+                }
+            });
+        }
+
+        async function processMultipleFiles(files) {
+            showMessage('Processing ' + files.length + ' PDF file(s)...', 'success');
+            
+            for (const file of files) {
+                try {
+                    await processSingleFile(file);
+                } catch (error) {
+                    console.error('Error processing file:', file.name, error);
+                    showMessage('Error processing ' + file.name + ': ' + error.message, 'error');
+                }
+            }
+            
+            updateFilesList();
+            showMessage('Successfully processed ' + files.length + ' file(s)!', 'success');
+        }
+
+        async function processSingleFile(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+            
+            let extractedText = '';
+            for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                const page = await pdf.getPage(pageNum);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map(item => item.str).join(' ');
+                extractedText += pageText + '\n';
+            }
+
+            const partsData = parsePartsPick(extractedText);
+            const techName = extractTechnicianName(extractedText);
+            
+            // Generate unique ID for this file/technician
+            const fileId = generateUniqueId();
+            
+            // Store data (in real app, this would go to Firebase)
+            const fileData = {
+                id: fileId,
+                fileName: file.name,
+                technicianName: techName,
+                technicianEmail: '',
+                partsData: partsData,
+                createdAt: new Date().toISOString(),
+                status: 'pending'
+            };
+            
+            processedFiles.push(fileData);
+            
+            // Store in localStorage (temporary - would use Firebase in production)
+            localStorage.setItem('parts_' + fileId, JSON.stringify(fileData));
+        }
+
+        function parsePartsPick(text) {
+            const parts = [];
+            
+            const allSections = [
+                { name: 'Expected Back', regex: /Items Expected Back:\s*(.*?)(?=Items Special-Ordered:|Items Spec-Tagged:|$)/s },
+                { name: 'Special-Ordered', regex: /Items Special-Ordered:\s*(.*?)(?=Items Spec-Tagged:|$)/s }
+            ];
+
+            allSections.forEach(section => {
+                const sectionMatch = text.match(section.regex);
+                if (sectionMatch) {
+                    const sectionText = sectionMatch[1].trim();
+                    const entries = sectionText.split(/(?=\s*\d+\s+[A-Z0-9])/);
+                    
+                    entries.forEach(entry => {
+                        entry = entry.trim();
+                        if (entry.length < 15) return;
+                        
+                        const partMatch = entry.match(/(\d+)\s+([A-Z0-9\-]+(?:CORE)?)\s*\(([^)]+)\)\s*([A-Z]{2,3})?\s*(\([^)]*\))?\s*(.*?)$/i);
+                        
+                        if (partMatch) {
+                            const qty = parseInt(partMatch[1]) || 1;
+                            const partNumber = partMatch[2];
+                            const description = partMatch[3];
+                            const techInitials = partMatch[4] || '';
+                            const tagSection = partMatch[5] || '';
+                            let remainingText = partMatch[6] || '';
+                            
+                            let originalTag = '';
+                            if (tagSection) {
+                                originalTag = tagSection.replace(/[()]/g, '').trim();
+                            }
+                            
+                            let customer = 'Unknown Customer';
+                            let invoiceNumber = '';
+                            
+                            const invoiceMatch = remainingText.match(/.*?(\d{4,6})\)?\s*$/);
+                            if (invoiceMatch) {
+                                invoiceNumber = invoiceMatch[1];
+                                customer = remainingText.replace(/\s*\(?\d{4,6}\)?\s*$/, '').trim();
+                            } else {
+                                customer = remainingText.trim();
+                            }
+                            
+                            customer = customer
+                                .replace(/^\s*\(.*?\)\s*/, '')
+                                .replace(/\s*\[[^\]]*\]\s*$/, '')
+                                .replace(/\s+/g, ' ')
+                                .trim();
+                            
+                            if (customer === '') customer = 'Unknown Customer';
+                            
+                            parts.push({
+                                qty: qty,
+                                partNumber: partNumber,
+                                description: description.trim(),
+                                customer: customer,
+                                invoiceNumber: invoiceNumber,
+                                section: section.name,
+                                originalTag: originalTag,
+                                status: 'pending-use',
+                                notes: ''
+                            });
+                        }
+                    });
+                }
+            });
+            
+            return parts;
+        }
+
+        function extractTechnicianName(text) {
+            const headerMatch = text.match(/PartsPick for (.+?) as of/);
+            return headerMatch ? headerMatch[1].trim() : 'Unknown Technician';
+        }
+
+        function generateUniqueId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        function updateFilesList() {
+            const filesList = document.getElementById('filesList');
+            const processedFilesSection = document.getElementById('processedFiles');
+            
+            filesList.innerHTML = '';
+            
+            processedFiles.forEach((file, index) => {
+                const fileCard = document.createElement('div');
+                fileCard.className = 'file-card';
+                
+                const techLink = `${baseURL}tech.html?id=${file.id}`;
+                
+                fileCard.innerHTML = `
+                    <div class="file-info">
+                        <div class="file-name">${file.fileName}</div>
+                        <div class="file-details">
+                            Technician: ${file.technicianName} | Parts: ${file.partsData.length} | Created: ${new Date(file.createdAt).toLocaleDateString()}
+                        </div>
+                        <div class="tech-input">
+                            <label>Tech Email:</label>
+                            <input type="email" placeholder="technician@company.com" value="${file.technicianEmail}" 
+                                   onchange="updateTechEmail(${index}, this.value)" />
+                        </div>
+                    </div>
+                    <div class="link-section">
+                        <div style="margin-bottom: 10px; font-weight: bold;">Generated Link:</div>
+                        <div class="generated-link">${techLink}</div>
+                        <button class="btn btn-primary" onclick="copyLink('${techLink}')">📋 Copy Link</button>
+                        <button class="btn btn-warning" onclick="testLink('${techLink}')">🔍 Test Link</button>
+                    </div>
+                `;
+                
+                filesList.appendChild(fileCard);
+            });
+            
+            if (processedFiles.length > 0) {
+                processedFilesSection.classList.add('visible');
+            }
+        }
+
+        function updateTechEmail(index, email) {
+            processedFiles[index].technicianEmail = email;
+            // Update localStorage
+            localStorage.setItem('parts_' + processedFiles[index].id, JSON.stringify(processedFiles[index]));
+        }
+
+        function copyLink(link) {
+            navigator.clipboard.writeText(link).then(() => {
+                showMessage('Link copied to clipboard!', 'success');
+            });
+        }
+
+        function testLink(link) {
+            window.open(link, '_blank');
+        }
+
+        function generateAllEmails() {
+            const managerEmail = document.getElementById('managerEmail').value;
+            if (!managerEmail) {
+                showMessage('Please enter your email address first!', 'error');
+                return;
+            }
+            
+            // Save manager email
+            localStorage.setItem('managerEmail', managerEmail);
+            
+            const emailTemplates = document.getElementById('emailTemplates');
+            const emailSection = document.getElementById('emailSection');
+            
+            emailTemplates.innerHTML = '';
+            
+            processedFiles.forEach(file => {
+                if (!file.technicianEmail) {
+                    showMessage(`Please enter email for ${file.technicianName}`, 'error');
+                    return;
+                }
+                
+                const techLink = `${baseURL}tech.html?id=${file.id}`;
+                
+                const emailTemplate = `
+Subject: Parts Status Update Required - ${file.technicianName}
+
+Hi ${file.technicianName},
+
+Please update the status of your assigned parts by clicking the link below:
+
+🔗 PARTS UPDATE LINK: ${techLink}
+
+This link contains ${file.partsData.length} parts that need status updates. Please:
+
+1. Click the link above
+2. Update the status for each part (Used, Returned, Lost, etc.)
+3. Add any necessary notes
+4. Submit the completed form
+
+The completed report will be automatically sent to ${managerEmail}.
+
+If you have any questions, please contact your supervisor.
+
+Thanks!
+Parts Management Team
+                `;
+                
+                const templateDiv = document.createElement('div');
+                templateDiv.innerHTML = `
+                    <h4>Email for: ${file.technicianName} (${file.technicianEmail})</h4>
+                    <div class="email-template">${emailTemplate}</div>
+                    <button class="btn btn-primary" onclick="copyEmailTemplate('${emailTemplate.replace(/'/g, "\\'")}')">📋 Copy Email</button>
+                    <button class="btn btn-success" onclick="sendEmail('${file.technicianEmail}', '${file.technicianName}', '${techLink}')">📧 Send Email</button>
+                    <hr style="margin: 20px 0;">
+                `;
+                
+                emailTemplates.appendChild(templateDiv);
+            });
+            
+            emailSection.style.display = 'block';
+            showMessage('Email templates generated! Copy and send to your technicians.', 'success');
+        }
+
+        function copyEmailTemplate(template) {
+            navigator.clipboard.writeText(template).then(() => {
+                showMessage('Email template copied to clipboard!', 'success');
+            });
+        }
+
+        function sendEmail(techEmail, techName, link) {
+            // This would integrate with EmailJS or similar service
+            const subject = `Parts Status Update Required - ${techName}`;
+            const body = `Hi ${techName},\n\nPlease update your parts status: ${link}`;
+            
+            const mailtoLink = `mailto:${techEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            window.location.href = mailtoLink;
+        }
+
+        function showMessage(text, type) {
+            const messageEl = document.getElementById(type + 'Message');
+            messageEl.textContent = text;
+            messageEl.style.display = 'block';
+            
+            setTimeout(() => {
+                messageEl.style.display = 'none';
+            }, 5000);
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+        });
+    </script>
+</body>
+</html>
