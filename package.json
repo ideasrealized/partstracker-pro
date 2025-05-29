@@ -50,5 +50,9 @@
     "last 2 versions",
     "not dead",
     "not ie 11"
-  ]
-} 
+  ],
+  "dependencies": {
+    "chalk": "^5.4.1",
+    "firebase-admin": "^13.4.0"
+  }
+}
